@@ -23,23 +23,15 @@ import           Types
 class Create a where
     create :: a -> BoltActionT IO [Record]
 
-instance Create Molecule where
+instance Create DataNode where
     create (Molecule id smiles iupacName) = query
         [qq|MERGE (:Molecule \{id: $id, smiles: "$smiles", iupacName: "$iupacName"\})|]
-
-
-
-instance Create Reaction where
     create (Reaction id name) = query
         [qq|MERGE (:Reaction \{id: $id, name: "$name"\})|]
-
-
-
-instance Create Catalyst where
-    create (Catalyst id smiles name) = query
-        [qq|MERGE (:Catalyst \{id: $id, smiles: "$smiles", name: "$nameV"\})|]
+    create (Catalyst id smiles maybeName) = query
+        [qq|MERGE (:Catalyst \{id: $id, smiles: "$smiles", name: "$maybeNameV"\})|]
             where
-                nameV = case name of
+                maybeNameV = case maybeName of
                     Just v  -> v
                     Nothing -> ""
 

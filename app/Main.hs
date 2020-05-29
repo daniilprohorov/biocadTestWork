@@ -15,9 +15,6 @@ import           Database.Bolt
 
 import           Control.Monad
 import           Data.Default
-import           Data.Map                      hiding (map)
-import           Data.Text                     hiding (concat, concatMap, head,
-                                                length, map, replicate, zip)
 import           Prelude                       hiding (id)
 import           Text.InterpolatedString.Perl6 (qq)
 
@@ -29,6 +26,8 @@ import           Types
 import           Data.Either
 import           Database.Bolt.Serialization
 
+
+-- generate reactions with semi-automatic methods
 main :: IO ()
 main = do pipe <- connect $ def { user = "neo4j", password = "12345" }
           let
@@ -46,16 +45,18 @@ main = do pipe <- connect $ def { user = "neo4j", password = "12345" }
                   , createReactionGen 11 [19, 20]          [13]    [16, 17]
                   ]
           _ <- run pipe $ mapM create reactions
+
           reactionV <- run pipe $ getReactionGen 8
           print reactionV
 
-          v <- run pipe $ do
-              lol
-          print v
+          path <- run pipe $ findPath 1 17
+
+          print path
 
           close pipe
 
 
+-- example of generation one reaction
 -- main :: IO ()
 -- main = do
 --     pipe <- connect $ def { user = "neo4j", password = "12345" }
@@ -67,7 +68,7 @@ main = do pipe <- connect $ def { user = "neo4j", password = "12345" }
 --         m4 = Molecule { id = 4, smiles = "m4", iupacName = "m4" }
 
 --         -- create catalyst
---         c = Catalyst { id = 1, smiles = "catalyst", name = Nothing }
+--         c = Catalyst { id = 1, smiles = "catalyst", maybeName = Nothing }
 
 --         -- create accelerate
 --         acc = ACCELERATE { temperature = 211.99, pressure = 1.98878 }
@@ -96,34 +97,19 @@ main = do pipe <- connect $ def { user = "neo4j", password = "12345" }
 --     print reactionV
 --     close pipe
 
--- MATCH p=shortestPath((m1:Molecule {id:1})-[:PRODUCT_FROM|:REAGENT_IN*1..100]->(m2:Molecule {id:16}))
--- RETURN p
 
+-- find path between two moleculas by id
+findPath :: Int -> Int -> BoltActionT IO [DataNode]
+findPath idS idE= do
+    records <- query [qq|MATCH p=shortestPath((m1:Molecule \{id:$idS\})-[:PRODUCT_FROM|:REAGENT_IN*1..100]->(m2:Molecule \{id:$idE\})) return nodes(p)|]
+    values <- forM records $ (\record -> record `at` "nodes(p)")
+    let
+        structures = map fromS $ concatMap fromL values
+        eitherNodes :: [Either UnpackError Node]
+        eitherNodes = map fromStructure structures
+        nodes = case partitionEithers eitherNodes of
+            ([], v) -> v
+            _       -> error "UnpackError"
+        output = map toData nodes
 
-
--- main :: IO ()
--- main = do
---     pipe <- connect $ def { user = "neo4j", password = "12345" }
---     v <- run pipe $ do
---         lol
---     print v
---     close pipe
-fromL (L x) = x
-fromS (S x) = x
-
--- lol :: BoltActionT IO Node
-lol = do
-  records <- query "MATCH p=shortestPath((m1:Molecule {id:1})-[:PRODUCT_FROM|:REAGENT_IN*1..100]->(m2:Molecule {id:4})) return nodes(p)"
-  values <- forM records $ (\record -> record `at` "nodes(p)")
-  let
-
-      structures = map fromS $ concatMap fromL values
-      eitherNodes :: [Either UnpackError Node]
-      eitherNodes = map fromStructure structures
-      nodes = case partitionEithers eitherNodes of
-          ([], v) -> v
-          _       -> error "UnpackError"
-      -- output = map toData nodes
-
-  -- return $ map fromStructure mur
-  return nodes
+    return output

@@ -42,32 +42,32 @@ getReactionGen id = do
 
     return $ ReactionGen reactV mInV catV mOutV
     where
-        moleculasIn :: Int -> BoltActionT IO [Molecule]
+        moleculasIn :: Int -> BoltActionT IO [DataNode]
         moleculasIn idV = liftM (map toData) $ do
           records <- query [qq|MATCH (r:Reaction \{id:$idV\}) MATCH (r)-[p:REAGENT_IN]-(m:Molecule) RETURN m|]
           forM records $ (\record -> record `at` "m") :: BoltActionT IO [Node]
 
-        moleculasOut :: Int -> BoltActionT IO [Molecule]
+        moleculasOut :: Int -> BoltActionT IO [DataNode]
         moleculasOut idV = liftM (map toData) $ do
           records <- query [qq|MATCH (r:Reaction \{id:$idV\}) MATCH (r)-[p:PRODUCT_FROM]-(m:Molecule) RETURN m|]
           forM records $ (\record -> record `at` "m") :: BoltActionT IO [Node]
 
-        product_from :: Int -> BoltActionT IO [PRODUCT_FROM]
+        product_from :: Int -> BoltActionT IO [DataEdge]
         product_from idV = liftM (map toData) $ do
           records <- query [qq|MATCH (r:Reaction \{id:$idV\}) MATCH (r)-[p:PRODUCT_FROM]-(m:Molecule) RETURN p|]
           forM records $ (\record -> record `at` "p") :: BoltActionT IO [Relationship]
 
-        accelerate :: Int -> BoltActionT IO [ACCELERATE]
+        accelerate :: Int -> BoltActionT IO [DataEdge]
         accelerate idV = liftM (map toData) $ do
           records <- query [qq|MATCH (r:Reaction \{id:$idV\}) MATCH (c:Catalyst)-[p:ACCELERATE]-(r) RETURN p|]
           forM records $ (\record -> record `at` "p") :: BoltActionT IO [Relationship]
 
-        catalysts :: Int -> BoltActionT IO [Catalyst]
+        catalysts :: Int -> BoltActionT IO [DataNode]
         catalysts idV = liftM (map toData) $ do
           records <- query [qq|MATCH (r:Reaction \{id:$idV\}) MATCH (r)-[p:ACCELERATE]-(c:Catalyst) RETURN c|]
           forM records $ (\record -> record `at` "c") :: BoltActionT IO [Node]
 
-        reaction :: Int -> BoltActionT IO [Reaction]
+        reaction :: Int -> BoltActionT IO [DataNode]
         reaction idV = liftM (map toData) $ do
           records <- query [qq|MATCH (r:Reaction \{id:$idV\}) RETURN r|]
           forM records $ (\record -> record `at` "r") :: BoltActionT IO [Node]
